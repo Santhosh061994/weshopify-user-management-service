@@ -27,7 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @RestController
 public class UsersResource {
-	
+
 	@Autowired
 	private RolemgmntServiceImpl roleMgmtService;
 
@@ -56,24 +56,35 @@ public class UsersResource {
 
 		return null;
 	}
-	
 
 	@GetMapping(value = "/users/roles")
 	public ResponseEntity<List<RoleBean>> findAllRoles() {
 		List<RoleBean> rolesList = roleMgmtService.getAllRoles();
 		ResponseEntity<List<RoleBean>> rsb = null;
-		if(null!= rolesList && rolesList.size()>0) {
+		if (null != rolesList && rolesList.size() > 0) {
 			rsb.ok().body(rolesList);
-		}
-		else {
+		} else {
 			rsb.noContent().build();
 		}
 		return rsb;
 	}
 
+	@PostMapping(value = "/users/roles")
+	public ResponseEntity<List<RoleBean>> createRoles(@RequestBody RoleBean payload) {
+		List<RoleBean> resourceList = roleMgmtService.createRoles(payload);
+		ResponseEntity<List<RoleBean>> response = null;
+		if (null != resourceList && resourceList.size() > 0) {
+			response = ResponseEntity.ok().body(resourceList);
+		} else {
+			response = ResponseEntity.noContent().build();
+		}
+		return response;
+
+	}
+
 	@DeleteMapping(value = "/users/{userId}")
 	public ResponseEntity<List<WeshopifyPlatformUserBean>> deleteuserbyId(@PathVariable("userId") String userID) {
-		
+
 		return null;
 	}
 }

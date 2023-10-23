@@ -8,5 +8,5 @@ public interface RoleMgmtService {
 	
 	
 	List<RoleBean> getAllRoles();
-	
+	List<RoleBean> createRoles(RoleBean roleBean);
 }

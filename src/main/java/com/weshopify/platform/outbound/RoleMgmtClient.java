@@ -4,50 +4,8 @@ import java.lang.reflect.Type;
 import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
-import java.io.IOException;
-import java.security.KeyManagementException;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
 
-import javax.net.ssl.SSLContext;
-
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.http.client.ClientHttpRequestFactory;
-import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
-import org.springframework.web.client.RestTemplate;
-import org.apache.hc.client5.http.classic.HttpClient;
-import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
-import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
-import org.apache.hc.client5.http.socket.ConnectionSocketFactory;
-import org.apache.hc.client5.http.socket.PlainConnectionSocketFactory;
-import org.apache.hc.client5.http.ssl.SSLConnectionSocketFactory;
-import org.apache.hc.core5.http.URIScheme;
-import org.apache.hc.core5.http.config.Registry;
-import org.apache.hc.core5.http.config.RegistryBuilder;
-import org.apache.hc.core5.ssl.SSLContextBuilder;import java.io.IOException;
-import java.security.KeyManagementException;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.cert.CertificateException;
-
-import javax.net.ssl.SSLContext;
-
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.http.client.ClientHttpRequestFactory;
-import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
-import org.springframework.web.client.RestTemplate;
-import org.apache.hc.client5.http.classic.HttpClient;
-import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
-import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
-import org.apache.hc.client5.http.socket.ConnectionSocketFactory;
-import org.apache.hc.client5.http.socket.PlainConnectionSocketFactory;
-import org.apache.hc.client5.http.ssl.SSLConnectionSocketFactory;
-import org.apache.hc.core5.http.URIScheme;
-import org.apache.hc.core5.http.config.Registry;
-import org.apache.hc.core5.http.config.RegistryBuilder;
-import org.apache.hc.core5.ssl.SSLContextBuilder;
+import org.apache.commons.lang3.StringUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,6 +14,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -94,21 +53,18 @@ public class RoleMgmtClient {
 		List<RoleBean> roleList = null;
 		String role_api_url = iam_server_api_baseUrl + iam_server_api_roleUrl;
 		log.info("constructed roleapi_url is:\t" + role_api_url);
-		HttpEntity<String> request = prepareRequestBody();
+		HttpEntity<String> request = prepareRequestBody(null);
 		log.info("http entity request:\t" + request);
 
-		
-			
-		
 		ResponseEntity<Object> apiResposne = restTemplate.exchange(role_api_url, HttpMethod.GET, request, Object.class);
 		log.info("response code of the role api is:\t" + apiResposne.getStatusCode().value());
 
 		if (HttpStatus.OK.value() == apiResposne.getStatusCode().value()) {
 			Object responseBody = apiResposne.getBody();
 			roleList = parseResponse(responseBody);
-			for(RoleBean role: roleList) {
-				log.info("role id is:\t"+role.getId());
-				log.info("role name is:\t"+role.getDisplayName());
+			for (RoleBean role : roleList) {
+				log.info("role id is:\t" + role.getId());
+				log.info("role name is:\t" + role.getDisplayName());
 			}
 			log.info("the response body is:\t" + apiResposne);
 			System.out.println("the response body is:\t" + apiResposne);
@@ -116,10 +72,36 @@ public class RoleMgmtClient {
 
 		return Optional.ofNullable(roleList).get();
 	}
-	
-	
 
-	private HttpEntity<String> prepareRequestBody() {
+	public List<RoleBean> createRole(RoleBean role) {
+		List<RoleBean> roleLists = null;
+		String role_api_url = iam_server_api_baseUrl + iam_server_api_roleUrl;
+		log.info("constructed roleapi_url is:\t" + role_api_url);
+		role.setSchemas(new String[]{"urn:ietf:params:scim:schemas:extension:2.0:Role"});
+		String roleBean = null;
+		try {
+			roleBean = objectMapper.writeValueAsString(role);
+		} catch (JsonProcessingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		HttpEntity<String> requestbody = prepareRequestBody(roleBean);
+		log.info("http entity request:\t" + requestbody);
+
+		ResponseEntity<Object> apiResposne = restTemplate.exchange(role_api_url, HttpMethod.POST, requestbody,
+				Object.class);
+		log.info("response code of the role api is:\t" + apiResposne.getStatusCode().value());
+
+		if (HttpStatus.CREATED.value() == apiResposne.getStatusCode().value()) {
+			roleLists = findallRoles();
+
+		}
+
+		return Optional.ofNullable(roleLists).get();
+
+	}
+
+	private HttpEntity<String> prepareRequestBody(String rolePayload) {
 
 		String admincreds = iam_user_name + ":" + iam_password;
 		String encodedAdminCred = Base64.getEncoder().encodeToString(admincreds.getBytes());
@@ -127,8 +109,14 @@ public class RoleMgmtClient {
 
 		HttpHeaders headers = new HttpHeaders();
 		headers.set("Authorization", "Basic " + encodedAdminCred);
+		HttpEntity<String> requestBody = null;
+		if (StringUtils.isEmpty(rolePayload) || StringUtils.isBlank(rolePayload)) {
+			requestBody = new HttpEntity<String>(headers);
+		} else {
+			headers.set("Content-Type", MediaType.APPLICATION_JSON_VALUE);
+			requestBody = new HttpEntity<String>(rolePayload, headers);
+		}
 
-		HttpEntity<String> requestBody = new HttpEntity<String>(headers);
 		return requestBody;
 	}
 

@@ -12,14 +12,20 @@ import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Slf4j
-public class RolemgmntServiceImpl implements RoleMgmtService{
+public class RolemgmntServiceImpl implements RoleMgmtService {
 
 	@Autowired
 	private RoleMgmtClient roleMgmtClient;
-	
+
 	@Override
 	public List<RoleBean> getAllRoles() {
 		return roleMgmtClient.findallRoles();
+	}
+
+	@Override
+	public List<RoleBean> createRoles(RoleBean roleBean) {
+
+		return roleMgmtClient.createRole(roleBean);
 	}
 
 }
